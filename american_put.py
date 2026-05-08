@@ -9,26 +9,80 @@ def constant_rate_discount(r, t_from, t_to):
     """Discount factor for constant rate."""
     return np.exp(-r * (t_to - t_from))
 
-def simulate_paths_with_dividends(S0, r, sigma, T, N, M, dividends, seed=42):
-    """Simulate GBM paths with discrete cash dividends."""
+def simulate_merton_jump_diffusion_paths(S0, r, sigma, T, N, M,
+                                         lam, m_j, v_j, seed=42):
+    """
+    Simulate Merton jump–diffusion paths (no dividends yet).
+
+    dS/S = (r - λ κ) dt + σ dW + (J - 1) dN,
+    ln J ~ N(m_j, v_j), κ = E[J-1] = exp(m_j + 0.5*v_j) - 1.
+    """
     np.random.seed(seed)
+    dt = T / N
     times = np.linspace(0.0, T, N + 1)
-    gbm = GeometricBrownianMotion(mu=r, sigma=sigma)
-    rng = np.random.RandomState(seed)
-    X = gbm.simulate(times, M, rng)
-    X = X * (S0 / X[0])
-    
-    # Apply dividends
+
+    kappa = np.exp(m_j + 0.5 * v_j) - 1.0
+
+    # allocate
+    X = np.zeros((N + 1, M))
+    X[0] = S0
+
+    # pre‑draw randomness
+    Z = np.random.normal(size=(N, M))
+    K = np.random.poisson(lam * dt, size=(N, M))
+
+    for n in range(1, N + 1):
+        S_prev = X[n - 1]
+
+        # diffusion part
+        drift = (r - lam * kappa - 0.5 * sigma**2) * dt
+        diff = sigma * np.sqrt(dt) * Z[n - 1]
+        S_diff = S_prev * np.exp(drift + diff)
+
+        # jump part: collapse K jumps into one normal with mean K*m_j, var K*v_j
+        K_step = K[n - 1]
+        jump_mean = K_step * m_j
+        jump_var = K_step * v_j
+        jump_term = np.where(
+            K_step > 0,
+            np.random.normal(loc=jump_mean, scale=np.sqrt(jump_var)),
+            0.0
+        )
+
+        X[n] = S_diff * np.exp(jump_term)
+
+    return times, X
+
+def simulate_paths_with_dividends(S0, r, sigma, T, N, M, dividends, seed=42,
+                                  use_jumps=False,
+                                  lam=0.0, m_j=0.0, v_j=0.0):
+    """Simulate paths (GBM or Merton) with discrete cash dividends."""
+    if use_jumps:
+        # Jump–diffusion paths
+        times, X = simulate_merton_jump_diffusion_paths(
+            S0, r, sigma, T, N, M, lam, m_j, v_j, seed=seed
+        )
+    else:
+        # Original GBM paths
+        np.random.seed(seed)
+        times = np.linspace(0.0, T, N + 1)
+        gbm = GeometricBrownianMotion(mu=r, sigma=sigma)
+        rng = np.random.RandomState(seed)
+        X = gbm.simulate(times, M, rng)
+        X = X * (S0 / X[0])
+
+    # Apply dividends as before
     div_idx = {}
     for t_div, D in dividends:
         idx = np.argmin(np.abs(times - t_div))
         div_idx.setdefault(idx, 0.0)
         div_idx[idx] += D
-    
+
     for idx, D in div_idx.items():
         X[idx] = np.maximum(X[idx] - D, 0.0)
-    
+
     return times, X
+
 
 def price_american_put(K, T, r, sigma, S0, N, M, dividends):
     """Price American put with LSMC."""
@@ -49,6 +103,35 @@ def price_american_put(K, T, r, sigma, S0, N, M, dividends):
     price = lsmc_algorithm(paths, times, df, fit_quadratic, put_payoff, itm)
 
     return price, paths, times
+
+# Example jump parameters
+lam = 0.5          # 0.5 jumps per year on average
+m_j = -0.1         # downward‑biased jumps
+v_j = 0.2**2       # jump size uncertainty
+
+def price_american_put_jumps(K, T, r, sigma, S0, N, M, dividends):
+    times, paths = simulate_paths_with_dividends(
+        S0, r, sigma, T, N, M, dividends,
+        seed=42,
+        use_jumps=True,
+        lam=lam, m_j=m_j, v_j=v_j
+    )
+
+    def df(t_from, t_to):
+        return constant_rate_discount(r, t_from, t_to)
+
+    def put_payoff(spot):
+        return np.maximum(K - spot, 0.0)
+
+    def itm(payoff, spot):
+        return payoff > 0
+
+    def fit_quadratic(x, y):
+        return np.polynomial.Polynomial.fit(x, y, 2, rcond=None)
+
+    price = lsmc_algorithm(paths, times, df, fit_quadratic, put_payoff, itm)
+    return price, paths, times
+
 
 # ============================================================================
 # EXPERIMENTS
@@ -144,6 +227,17 @@ plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig('sample_paths.png', dpi=150)
 print("  ✓ Saved plot: sample_paths.png")
+
+print("\n📌 EXPERIMENT 5: Jump–Diffusion vs GBM (with dividend)")
+print("-"*70)
+
+V0_gbm, _, _ = price_american_put(K, T, r, sigma, S, N, M, dividends)
+
+V0_jump, _, _ = price_american_put_jumps(K, T, r, sigma, S, N, M, dividends)
+
+print(f"  GBM price:    ${V0_gbm:.4f}")
+print(f"  Jump price:   ${V0_jump:.4f}")
+print(f"  Difference:   ${V0_jump - V0_gbm:.4f}")
 
 # SUMMARY
 print("\n" + "="*70)
