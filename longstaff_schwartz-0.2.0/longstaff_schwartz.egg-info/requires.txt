@@ -1,0 +1,5 @@
+Click>=8.0
+numpy>=1.22
+scipy>=1.7
+matplotlib>=3.5
+jupyterlab>=3.5

@@ -1,0 +1,15 @@
+LSM experiment results summary
+=============================
+
+Scenario summary table:
+
+scenario          model  lambda regression span_method  american_mean  american_sd_across_reps  avg_mc_se  european_mean  eep_mean  ci95_halfwidth
+      A1            GBM    0.00 polynomial       fixed       2.347212                 0.057422   0.061835       2.066401  0.280811        0.050333
+      A2 Jump-diffusion    0.05 polynomial       fixed       2.410895                 0.052932   0.065211       2.149593  0.261301        0.046397
+B2_fixed Jump-diffusion    0.05     lowess       fixed       2.453931                 0.047344   0.066494       2.149593  0.304338        0.041499
+   B2_cv Jump-diffusion    0.05     lowess          cv       2.472863                 0.054755   0.067107       2.149593  0.323270        0.047995
+
+Quick interpretation notes:
+- Compare A1 vs A2 for the effect of adding jumps.
+- Compare A2 vs B2_fixed for polynomial vs fixed-LOWESS under jumps.
+- Compare B2_fixed vs B2_cv for fixed span vs CV-selected LOWESS.

@@ -1,0 +1,4 @@
+benchmark_scenario,model,lambda,regression,benchmark_american_price,benchmark_mc_se,benchmark_european_price,benchmark_early_exercise_premium,benchmark_paths,benchmark_steps,benchmark_lowess_frac
+A1,GBM,0.0,polynomial,2.323930848462363,0.01236306550502016,2.066401004420346,0.25752984404201706,50000,100,
+A2_benchmark_poly,Jump-diffusion,0.05,polynomial,2.3972902356195562,0.013073458021589863,2.1495933398615135,0.24769689575804277,50000,100,
+B2_benchmark_lowess,Jump-diffusion,0.05,lowess,2.4128933915806314,0.013035920171165059,2.1495933398615135,0.26330005171911797,50000,100,0.2

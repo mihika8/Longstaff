@@ -1,0 +1,12 @@
+Benchmark pricing report
+========================
+
+ benchmark_scenario          model  lambda regression  benchmark_american_price  benchmark_mc_se  benchmark_european_price  benchmark_early_exercise_premium  benchmark_paths  benchmark_steps  benchmark_lowess_frac
+                 A1            GBM    0.00 polynomial                  2.323931         0.012363                  2.066401                          0.257530            50000              100                    NaN
+  A2_benchmark_poly Jump-diffusion    0.05 polynomial                  2.397290         0.013073                  2.149593                          0.247697            50000              100                    NaN
+B2_benchmark_lowess Jump-diffusion    0.05     lowess                  2.412893         0.013036                  2.149593                          0.263300            50000              100                    0.2
+
+Interpretation:
+- These benchmark prices are higher-precision references built with more paths and more exercise dates than the fast experiment.
+- Use benchmark_comparison_summary.csv to identify which fast method is closest to the benchmark.
+- Lower mean_abs_error indicates the more accurate pricing method relative to the benchmark.
